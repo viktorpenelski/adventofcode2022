@@ -9,8 +9,8 @@ def calculate_priority(char: str):
 
 
 def common_items_from_bag(elf_bag: str):
-    left = set(elf_bag[0:len(elf_bag) // 2])
-    right = set(elf_bag[len(elf_bag) // 2:len(elf_bag)])
+    left = set(elf_bag[:len(elf_bag) // 2])
+    right = set(elf_bag[len(elf_bag) // 2:])
     return left.intersection(right)
 
 
