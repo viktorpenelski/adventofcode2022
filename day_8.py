@@ -11,11 +11,9 @@ def parse_lines(lines):
         grid.append([int(ch) for ch in line.strip()])
     return grid
 
-grid = parse_lines(input_lines)
-
 
 def viewable_trees(row, col, direction):
-    viewable_trees = 0
+    trees_seen = 0
     own_size = grid[row][col]
     blocked = False
     largest_seen = -1
@@ -26,15 +24,15 @@ def viewable_trees(row, col, direction):
         if grid[row][col] > largest_seen:
             largest_seen = grid[row][col]
         if not blocked:
-            viewable_trees += 1
+            trees_seen += 1
         else:
             if grid[row][col] > largest_seen:
-                viewable_trees += 1
+                trees_seen += 1
         if grid[row][col] >= own_size:
             blocked = True
         row += direction[0]
         col += direction[1]
-    return viewable_trees
+    return trees_seen
 
 
 def count_los_from(row, col, direction):
@@ -49,6 +47,7 @@ def count_los_from(row, col, direction):
     return visible_coords
 
 
+grid = parse_lines(input_lines)
 visible_trees_set = set()
 for r in range(len(grid)):
     left_to_right = count_los_from(r, 0, (0, 1))
@@ -62,7 +61,6 @@ for c in range(len(grid[0])):
     visible_trees_set.update(top_to_bottom)
     visible_trees_set.update(bottom_to_top)
 
-print(visible_trees_set)
 print(len(visible_trees_set))
 
 max_score = 0
