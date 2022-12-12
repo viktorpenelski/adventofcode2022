@@ -17,6 +17,7 @@ def find_pos(state, pos):
 
 
 def BFS_OF_SHAAAME(state, nr_steps, c_pos, target_pos, visited):
+    # morning brain implemented DFS instead of BFS, which can't actually solve for the actual input
     row, col = c_pos
     target_row, target_col = target_pos
     if row == target_row and col == target_col:
