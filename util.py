@@ -1,5 +1,6 @@
 import sys
 import time
+from functools import wraps
 from typing import Callable
 import logging
 
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def timed(fn: Callable):
+    @wraps(fn)
     def wrapper(*args, **kwargs):
         logger.info(f'Starting execution of [{fn.__name__}]')
         start = time.time()
@@ -23,6 +25,7 @@ def timed(fn: Callable):
 
 
 def result_printing(fn: Callable):
+    @wraps(fn)
     def wrapper(*args, **kwargs):
         result = fn(*args, **kwargs)
         logger.info(f'[{fn.__name__}] result: {result}')

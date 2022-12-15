@@ -12,7 +12,7 @@ with open('inputs/day_14.txt', 'r') as f:
     lines = [l.strip() for l in f.readlines()]
 
 
-@dataclass
+@dataclass(frozen=True)
 class Point:
     x: int
     y: int
@@ -127,8 +127,8 @@ def draw_map(all_points: List[List[Point]],
     return world
 
 
-@timed
 @result_printing
+@timed
 def solve(inputs):
     rock_coords, (min_pt, max_pt) = parse_input(inputs)
     world = draw_map(rock_coords, min_pt, max_pt)
@@ -147,8 +147,8 @@ def solve(inputs):
     # print(total_sand)
 
 
-@timed
 @result_printing
+@timed
 def solve_pt2(inputs):
     rock_coords, (min_pt, max_pt) = parse_input(inputs)
     world = draw_map(rock_coords, min_pt, max_pt, False)
