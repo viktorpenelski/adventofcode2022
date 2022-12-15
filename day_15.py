@@ -93,11 +93,8 @@ def solve_pt2(rows, min_y=0, max_y=4000000):
             return 4_000_000 * x + y
 
 
-# solve(test_lines, 10)
-# solve(lines, 2000000)
+solve(test_lines, 10)
+solve(lines, 2000000)
 
-solve_pt2(test_lines, 10, 10)
-solve_pt2(lines, 2000000, 2000000)
-
-# solve_pt2(test_lines, 0, 20)
-# solve_pt2(lines, 0, 4000000)
+solve_pt2(test_lines, 0, 20)
+solve_pt2(lines, 0, 4000000)
