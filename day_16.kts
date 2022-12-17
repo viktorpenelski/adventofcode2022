@@ -24,7 +24,7 @@ data class Valve(val name: String, val flowRate: Int, val connections: Set<Strin
     }
 }
 
-Files.lines(Paths.get("inputs/day_16.txt"))
+Files.lines(Paths.get("D:\\dev\\aoc2022\\inputs\\day_16_kris.txt"))
     .forEach {
         Valve.fromInputLine(it)
     }
@@ -125,17 +125,24 @@ fun solvePt2() {
             0,
         )
     }
-    val maxPressure = allPaths
-        .parallelStream()
-        .map { p1 ->
-            allPaths.map { p2 ->
-                if (!p1.first.any(p2.first::contains)) {
-                    p1.second + p2.second
-                } else {
-                    null
+    var maxPressure = 0
+    allPaths.sortByDescending { it.second }
+    for (p1 in allPaths) {
+        if (p1.second < maxPressure - allPaths[0].second) {
+            break
+        }
+        for (p2 in allPaths) {
+            if (p2.second < maxPressure - allPaths[0].second) {
+                break
+            }
+            if (!p1.first.any(p2.first::contains)) {
+                if (p1.second + p2.second >= maxPressure) {
+                    maxPressure = p1.second + p2.second
+                    break
                 }
-            }.filterNotNull()
-        }.flatMap { it.stream() }.max(Comparator.naturalOrder())
+            }
+        }
+    }
     println(maxPressure)
 }
 
