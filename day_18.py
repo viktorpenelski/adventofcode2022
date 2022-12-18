@@ -3,9 +3,6 @@ from dataclasses import dataclass
 from itertools import chain
 from typing import List, Set, Deque
 
-import matplotlib.pyplot as plt
-import numpy as np
-
 from util import timed, result_printing
 
 
@@ -39,6 +36,9 @@ class Point3d:
 
 
 def visualize(points: List[List[int]]):
+    import matplotlib.pyplot as plt
+    import numpy as np
+
     # plot on a cubic grid with dimensions the one larger than largest coordinate of any point
     dimensions = 1 + max([max(pt) for pt in points])
     # Create axis as our "canvas"
@@ -80,8 +80,16 @@ def solve_pt_1(points: Set[Point3d]) -> int:
 @result_printing
 def solve_pt_2(points: Set[Point3d]):
     # pretty inefficient to run 6 times over all points, but we know there are not that many of them
-    min_pt = Point3d(min(pt.x-1 for pt in points), min(pt.y-1 for pt in points), min(pt.z-1 for pt in points))
-    max_pt = Point3d(max([pt.x+1 for pt in points]), max([pt.y+1 for pt in points]), max([pt.z+1 for pt in points]))
+    min_pt = Point3d(
+        min(pt.x - 1 for pt in points),
+        min(pt.y - 1 for pt in points),
+        min(pt.z - 1 for pt in points)
+    )
+    max_pt = Point3d(
+        max([pt.x + 1 for pt in points]),
+        max([pt.y + 1 for pt in points]),
+        max([pt.z + 1 for pt in points])
+    )
 
     def is_within_bounds(pt: Point3d) -> bool:
         return (
@@ -110,4 +118,4 @@ def solve_pt_2(points: Set[Point3d]):
 
 solve_pt_1(set(inputs))
 solve_pt_2(set(inputs))
-#visualize([pt.to_list() for pt in inputs])
+# visualize([pt.to_list() for pt in inputs])
