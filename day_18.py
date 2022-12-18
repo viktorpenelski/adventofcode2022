@@ -1,10 +1,9 @@
-from collections import defaultdict, deque
+from collections import deque
 from dataclasses import dataclass
-from typing import List, Set, Deque
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from scipy.spatial import ConvexHull
 from itertools import chain
+from typing import List, Set, Deque
+
+import matplotlib.pyplot as plt
 import numpy as np
 
 from util import timed, result_printing
