@@ -71,7 +71,7 @@ with open('inputs/day_18.txt', 'r') as f:
 @result_printing
 def solve_pt_1(points: Set[Point3d]) -> int:
     mapped_to_sides = map(lambda p: p.sides(), points)  # each point has potentially 6 "open" sides
-    all_sides = chain(*mapped_to_sides)  # them to a list of Point3d
+    all_sides = chain(*mapped_to_sides)  # flatten them to a list of Point3d
     filter_adjacent = filter(lambda p: p not in points, all_sides)  # filter out "blocked" sides
     return len(list(filter_adjacent))  # the remaining sides are going to be the surface area
 
@@ -91,15 +91,18 @@ def solve_pt_2(points: Set[Point3d]):
         )
 
     # setup a BFS in 3d space, starting from the top corner
+    # in the visualization we see that "air pockets" are surrounded by a "shell" of adjacent cubes
+    # so as long as we do not traverse "within" the cube shell,
+    # all cubes sides on the "edge" will make up the exterior surface of the lava droplet
     q: Deque[Point3d] = deque([max_pt])
     visited: Set[Point3d] = set()
     sides = 0
     while len(q) > 0:
         pt = q.popleft()
         if pt not in visited:
-            sides_in_bounds = list(filter(lambda p: is_within_bounds(p), pt.sides()))
-            next_destinations = list(filter(lambda p: p not in points, sides_in_bounds))
-            sides += len(sides_in_bounds) - len(next_destinations)
+            sides_in_bounds = list(filter(lambda p: is_within_bounds(p), pt.sides()))  # make sure we don't leave bounds
+            next_destinations = list(filter(lambda p: p not in points, sides_in_bounds))  # adjacent empty spaces
+            sides += len(sides_in_bounds) - len(next_destinations)  # the rest are adjacent occupied spaces
             q.extend(next_destinations)
             visited.add(pt)
     return sides
@@ -107,4 +110,4 @@ def solve_pt_2(points: Set[Point3d]):
 
 solve_pt_1(set(inputs))
 solve_pt_2(set(inputs))
-visualize([pt.to_list() for pt in inputs])
+#visualize([pt.to_list() for pt in inputs])
