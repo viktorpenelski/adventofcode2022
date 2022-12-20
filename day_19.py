@@ -67,16 +67,6 @@ class Blueprint:
     obsidian_robot: Resources
     geode_robot: Resources
 
-    def get_robot(self, robot: str) -> Resources:
-        if robot == 'ore':
-            return self.ore_robot
-        if robot == 'clay':
-            return self.clay_robot
-        if robot == 'obsidian':
-            return self.obsidian_robot
-        if robot == 'geode':
-            return self.geode_robot
-
     @cache
     def max_production_required(self):
         return Resources(
@@ -86,15 +76,12 @@ class Blueprint:
                          self.geode_robot.obsidian),
         )
 
-    def can_build_now(self, robot: str, res: Resources) -> bool:
-        if robot == 'ore':
-            return res.has_enough_for(self.ore_robot)
-        if robot == 'clay':
-            return res.has_enough_for(self.clay_robot)
-        if robot == 'obsidian':
-            return res.has_enough_for(self.obsidian_robot)
-        if robot == 'geode':
-            return res.has_enough_for(self.geode_robot)
+    @staticmethod
+    def robot_production(robot: str) -> Resources:
+        if robot == 'ore': return Resources(ore=1)
+        if robot == 'clay': return Resources(clay=1)
+        if robot == 'obsidian': return Resources(obsidian=1)
+        if robot == 'geode': return Resources()  # empty, because we have special handling for geodes
         raise Exception(f'Panik. Unknown robot type {robot}')
 
     def cost(self, robot: str) -> Resources:
@@ -123,7 +110,7 @@ class Blueprint:
         )
 
     def build_robot(self, state: 'State', robot: str) -> Optional['State']:
-        robot_cost = self.get_robot(robot)
+        robot_cost = self.cost(robot)
         max_req = self.max_production_required()
         if robot == 'ore' and max_req.ore <= (state.production.ore + (state.resources.ore // state.time_left)):
             return None
@@ -155,7 +142,7 @@ class Blueprint:
             geodes += state.time_left - turns
         resources = state.production.multiply(turns).plus(state.resources).minus(robot_cost)
         return State(
-            production=state.production.plus(ROBOT_PRODUCTION[robot]),
+            production=state.production.plus(self.robot_production(robot)),
             resources=resources,
             time_left=state.time_left - turns,
             geodes=geodes
@@ -163,7 +150,7 @@ class Blueprint:
 
     def build_robots_skipping(self, state: 'State', max_geodes: int) -> List['State']:
         next_states = []
-        for robot in ROBOT_PRODUCTION.keys():
+        for robot in ['ore', 'clay', 'obsidian', 'geode']:
             try_build_robot = self.build_robot(state, robot)
             if try_build_robot is not None:
                 max_future_geodes = (try_build_robot.time_left * (try_build_robot.time_left - 1)) // 2
@@ -171,13 +158,6 @@ class Blueprint:
                     next_states.append(try_build_robot)
         return next_states
 
-
-ROBOT_PRODUCTION = {
-    'ore': Resources(ore=1),
-    'clay': Resources(clay=1),
-    'obsidian': Resources(obsidian=1),
-    'geode': Resources(),
-}
 
 with open('inputs/test_day_19.txt', 'r') as f:
     test_inputs = [Blueprint.from_input_line(line) for line in f.readlines()]
@@ -195,7 +175,7 @@ class State:
 
 
 def simulate_bfs(bp: Blueprint, time: int):
-    starting_state = State(production=ROBOT_PRODUCTION['ore'], resources=Resources(), time_left=time, geodes=0)
+    starting_state = State(production=bp.robot_production('ore'), resources=Resources(), time_left=time, geodes=0)
     q = deque([starting_state])
 
     max_geodes = 0
