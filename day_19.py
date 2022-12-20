@@ -165,9 +165,10 @@ class Blueprint:
         next_states = []
         for robot in ROBOT_PRODUCTION.keys():
             try_build_robot = self.build_robot(state, robot)
-            check = try_build_robot and ((try_build_robot.time_left + try_build_robot.geodes + 10) >= max_geodes)
-            if try_build_robot is not None and check:
-                next_states.append(try_build_robot)
+            if try_build_robot is not None:
+                max_future_geodes = (try_build_robot.time_left * (try_build_robot.time_left - 1)) // 2
+                if try_build_robot.geodes + max_future_geodes >= max_geodes:
+                    next_states.append(try_build_robot)
         return next_states
 
 
