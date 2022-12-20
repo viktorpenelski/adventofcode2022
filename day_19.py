@@ -1,11 +1,12 @@
+import math
+import multiprocessing as mp
 import re
-from collections import deque, defaultdict
+from collections import deque
 from dataclasses import dataclass
-from functools import cache
-from itertools import chain
-from typing import List, Set, Deque
+from functools import cache, reduce
+from typing import List, Optional
 
-from util import timed, result_printing
+from util import timed
 
 
 @dataclass(frozen=True)
@@ -13,20 +14,19 @@ class Resources:
     ore: int = 0
     clay: int = 0
     obsidian: int = 0
-    geodes: int = 0
 
     def has_enough_for(self, other: 'Resources') -> bool:
-        return (self.ore - other.ore >= 0
+        return (
+                self.ore - other.ore >= 0
                 and self.clay - other.clay >= 0
                 and self.obsidian - other.obsidian >= 0
-                and self.geodes - other.geodes >= 0)
+        )
 
     def plus(self, other: 'Resources') -> 'Resources':
         return Resources(
             self.ore + other.ore,
             self.clay + other.clay,
             self.obsidian + other.obsidian,
-            self.geodes + other.geodes
         )
 
     def minus(self, other: 'Resources') -> 'Resources':
@@ -34,16 +34,30 @@ class Resources:
             self.ore - other.ore,
             self.clay - other.clay,
             self.obsidian - other.obsidian,
-            self.geodes - other.geodes
         )
 
-    def better_than(self, other: 'Resources') -> bool:
+    def multiply(self, times) -> 'Resources':
+        return Resources(
+            self.ore * times,
+            self.clay * times,
+            self.obsidian * times
+        )
+
+    def equal_to_or_better(self, other: 'Resources') -> bool:
         return (
                 self.ore >= other.ore
                 and self.clay >= other.clay
                 and self.obsidian >= other.obsidian
-                and self.geodes >= other.geodes
         )
+
+    def can_accommodate(self, cost: 'Resources') -> bool:
+        if cost.ore > 0 and self.ore == 0:
+            return False
+        if cost.clay > 0 and self.clay == 0:
+            return False
+        if cost.obsidian > 0 and self.obsidian == 0:
+            return False
+        return True
 
 
 @dataclass(frozen=True)
@@ -53,18 +67,26 @@ class Blueprint:
     obsidian_robot: Resources
     geode_robot: Resources
 
+    def get_robot(self, robot: str) -> Resources:
+        if robot == 'ore':
+            return self.ore_robot
+        if robot == 'clay':
+            return self.clay_robot
+        if robot == 'obsidian':
+            return self.obsidian_robot
+        if robot == 'geode':
+            return self.geode_robot
+
     @cache
     def max_production_required(self):
         return Resources(
             ore=max(self.ore_robot.ore, self.clay_robot.ore, self.obsidian_robot.ore, self.geode_robot.ore),
             clay=max(self.ore_robot.clay, self.clay_robot.clay, self.obsidian_robot.clay, self.geode_robot.clay),
-            obsidian=max(self.ore_robot.obsidian, self.obsidian_robot.obsidian, self.obsidian_robot.obsidian,
+            obsidian=max(self.ore_robot.obsidian, self.clay_robot.obsidian, self.obsidian_robot.obsidian,
                          self.geode_robot.obsidian),
-            geodes=max(self.ore_robot.geodes, self.obsidian_robot.geodes, self.obsidian_robot.geodes,
-                       self.geode_robot.geodes),
         )
 
-    def can_build(self, robot: str, res: Resources) -> bool:
+    def can_build_now(self, robot: str, res: Resources) -> bool:
         if robot == 'ore':
             return res.has_enough_for(self.ore_robot)
         if robot == 'clay':
@@ -100,38 +122,60 @@ class Blueprint:
             geode_robot=Resources(ore=int(match.group(5)), clay=0, obsidian=int(match.group(6)))
         )
 
-    def robots_to_build(self, state: 'State') -> List[str]:
-        if self.can_build('geode', state.resources):
-            return ['geode']
-        to_build = []
-        if (
-                self.can_build('ore', state.resources)
-                and self.max_production_required().ore - state.production.ore > 0
-                and (self.max_production_required().ore - state.production.ore) * state.time_left > state.resources.ore
-        ):
-            to_build.append('ore')
-        if (
-                self.can_build('clay', state.resources)
-                and self.max_production_required().clay - state.production.clay > 0
-                and (
-                self.max_production_required().clay - state.production.clay) * state.time_left > state.resources.clay
-        ):
-            to_build.append('clay')
-        if (
-                self.can_build('obsidian', state.resources)
-                and self.max_production_required().obsidian - state.production.obsidian > 0
-                and (
-                self.max_production_required().obsidian - state.production.obsidian) * state.time_left > state.resources.obsidian
-        ):
-            to_build.append('obsidian')
-        return to_build
+    def build_robot(self, state: 'State', robot: str) -> Optional['State']:
+        robot_cost = self.get_robot(robot)
+        max_req = self.max_production_required()
+        if robot == 'ore' and max_req.ore <= (state.production.ore + (state.resources.ore // state.time_left)):
+            return None
+        if robot == 'clay' and max_req.clay <= (state.production.clay + (state.resources.clay // state.time_left)):
+            return None
+        if state.resources.ore - robot_cost.ore >= 0:
+            ore_in_turns = 0
+        elif state.production.ore > 0:
+            ore_in_turns = math.ceil((robot_cost.ore - state.resources.ore) / state.production.ore)
+        else:
+            return None
+        if state.resources.clay - robot_cost.clay >= 0:
+            clay_in_turns = 0
+        elif state.production.clay > 0:
+            clay_in_turns = math.ceil((robot_cost.clay - state.resources.clay) / state.production.clay)
+        else:
+            return None
+        if state.resources.obsidian - robot_cost.obsidian >= 0:
+            obsidian_in_turns = 0
+        elif state.production.obsidian > 0:
+            obsidian_in_turns = math.ceil((robot_cost.obsidian - state.resources.obsidian) / state.production.obsidian)
+        else:
+            return None
+        turns = 1 + max(ore_in_turns, clay_in_turns, obsidian_in_turns)
+        if turns > state.time_left:
+            return None
+        geodes = state.geodes
+        if robot == 'geode':
+            geodes += state.time_left - turns
+        resources = state.production.multiply(turns).plus(state.resources).minus(robot_cost)
+        return State(
+            production=state.production.plus(ROBOT_PRODUCTION[robot]),
+            resources=resources,
+            time_left=state.time_left - turns,
+            geodes=geodes
+        )
+
+    def build_robots_skipping(self, state: 'State', max_geodes: int) -> List['State']:
+        next_states = []
+        for robot in ROBOT_PRODUCTION.keys():
+            try_build_robot = self.build_robot(state, robot)
+            check = try_build_robot and ((try_build_robot.time_left + try_build_robot.geodes + 10) >= max_geodes)
+            if try_build_robot is not None and check:
+                next_states.append(try_build_robot)
+        return next_states
 
 
 ROBOT_PRODUCTION = {
     'ore': Resources(ore=1),
     'clay': Resources(clay=1),
     'obsidian': Resources(obsidian=1),
-    'geode': Resources(geodes=1)
+    'geode': Resources(),
 }
 
 with open('inputs/test_day_19.txt', 'r') as f:
@@ -141,106 +185,54 @@ with open('inputs/day_19.txt', 'r') as f:
     inputs = [Blueprint.from_input_line(line) for line in f.readlines()]
 
 
-#
-# def simulate_dfs(production: Resources, res: Resources, bp: Blueprint, time_left: int, all_productions) -> Resources:
-#     all_productions[time_left].append(production)
-#     if time_left <= 0:
-#         return res
-#     # produce
-#     # resources = res.plus(production)
-#     # print(f'time_left: {time_left}, collecting: {production}, bank: {res}')
-#     if bp.can_build('geode', res):
-#         return simulate_dfs(
-#             production.plus(ROBOT_PRODUCTION['geode']),
-#             res.plus(production).minus(bp.cost('geode')),
-#             bp, time_left - 1, all_productions)
-#     robots = ['ore', 'clay', 'obsidian']
-#     robots = list(filter(lambda r: bp.can_build(r, res), robots))
-#     robots = list(filter(lambda r: bp.robots_to_build(r, production, time_left), robots))
-#     if len(robots) > 0:
-#         simulations = []
-#         for robot in robots:
-#             # print(f'Beep Boop, creating a [{robot}]. Current production is {production}')
-#             result = simulate_dfs(
-#                 production.plus(ROBOT_PRODUCTION[robot]),
-#                 res.plus(production).minus(bp.cost(robot)),
-#                 bp,
-#                 time_left - 1,
-#                 all_productions
-#             )
-#             simulations.append(result)
-#         simulations.append(simulate_dfs(production, res.plus(production), bp, time_left - 1, all_productions))
-#         simulations.sort(key=lambda r: r.geodes, reverse=True)
-#         return simulations[0]
-#     else:
-#         return simulate_dfs(production, res.plus(production), bp, time_left - 1, all_productions)
-#
-
 @dataclass(frozen=True)
 class State:
     production: Resources
     resources: Resources
     time_left: int
-
-
-def filter_only_better_states(best_states, states, visited):
-    to_return = []
-    for state in states:
-        if state in visited:
-            continue
-        if best_states.get(state.time_left) is None:
-            to_return.append(state)
-        elif (state.resources.better_than(best_states[state.time_left].resources)
-              and state.production.better_than(best_states[state.time_left].production)):
-            to_return.append(state)
-    return states
+    geodes: int
 
 
 def simulate_bfs(bp: Blueprint, time: int):
-    starting_state = State(production=ROBOT_PRODUCTION['ore'], resources=Resources(), time_left=time)
+    starting_state = State(production=ROBOT_PRODUCTION['ore'], resources=Resources(), time_left=time, geodes=0)
     q = deque([starting_state])
-    best_states = {
-        time: starting_state
-    }
-    visited = set()
+
     max_geodes = 0
     while len(q) > 0:
         state = q.popleft()
-        if state in visited:
-            continue
-        visited.add(state)
-        max_geodes = max(max_geodes, state.resources.geodes)
+        max_geodes = max(max_geodes, state.geodes)
         if state.time_left <= 0:
             continue
-        if state.resources.geodes < max_geodes - 2:
-            continue
-        if best_states.get(state.time_left) is None:
-            best_states[state.time_left] = state
-        elif (state.resources.better_than(best_states[state.time_left].resources)
-              and state.production.better_than(best_states[state.time_left].production)
-        ):
-            best_states[state.time_left] = state
-        robots = bp.robots_to_build(state)
-        next_states = []
-        for robot in robots:
-            next_states.append(State(
-                state.production.plus(ROBOT_PRODUCTION[robot]),
-                state.resources.minus(bp.cost(robot)).plus(state.production),
-                state.time_left - 1
-            ))
+        next_states = bp.build_robots_skipping(state, max_geodes)
+        q.extend(next_states)
 
-        q.extend(filter_only_better_states(best_states, next_states, visited))
-        if state.time_left > 7 or len(next_states) == 0:
-            q.append(State(state.production, state.resources.plus(state.production), state.time_left - 1))
+    print(f'for bp: {bp}, returning {max_geodes}')
     return max_geodes
 
 
 @timed
 def solve_pt_1(blueprints: List[Blueprint]):
-    results = []
-    for i, bp in enumerate(blueprints, start=1):
-        results.append(i * simulate_bfs(bp, 24))
-    print(sum(results))
+    async_results = []
+    with mp.Pool(processes=8) as pool:
+        for bp in blueprints:
+            async_results.append(pool.apply_async(simulate_bfs, [bp, 24]))
+        pool.close()
+        pool.join()
+    print(sum(i * r.get() for i, r in enumerate(async_results, start=1)))
 
 
-solve_pt_1(test_inputs)
+@timed
+def solve_pt_2(blueprints: List[Blueprint]):
+    async_results = []
+    with mp.Pool(processes=3) as pool:
+        for bp in blueprints[:3]:
+            async_results.append(pool.apply_async(simulate_bfs, [bp, 32]))
+        pool.close()
+        pool.join()
+    results = [r.get() for r in async_results]
+    print(reduce(lambda x, y: x * y, results))
+
+
+if __name__ == '__main__':
+    solve_pt_1(inputs)
+    solve_pt_2(inputs)
