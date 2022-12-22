@@ -5,7 +5,7 @@ op_lookup = {
     '+': operator.add,
     '-': operator.sub,
     '*': operator.mul,
-    '/': operator.floordiv,
+    '/': operator.truediv,
 }
 
 
@@ -68,11 +68,3 @@ if __name__ == '__main__':
             start = mid + 1
     noises = human_monkey.noises
     print(human_monkey.noises)
-    human_monkey.noises = noises + 1
-    while first_monkey.yell() - second_monkey.yell() == 0:
-        print(human_monkey.noises)
-        human_monkey.noises = human_monkey.noises + 1
-    human_monkey.noises = noises - 1
-    while first_monkey.yell() - second_monkey.yell() == 0:
-        print(human_monkey.noises)
-        human_monkey.noises = human_monkey.noises - 1
